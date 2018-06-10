@@ -1,9 +1,11 @@
 # From Arch, adapted for UBOS
+# This also includes changes made by Arch Linux ARM, because it otherwise
+# does not compile
 
 pkgbase=mariadb
 pkgname=('libmariadbclient' 'mariadb-clients' 'mytop' 'mariadb')
-pkgver=10.1.32
-pkgrel=2
+pkgver=10.1.33
+pkgrel=1
 arch=('x86_64')
 license=('GPL')
 url='http://mariadb.org/'
@@ -12,16 +14,17 @@ makedepends=('boost' 'bzip2' 'cmake' 'jemalloc' 'libaio' 'libxml2' 'lz4' 'lzo'
 validpgpkeys=('199369E5404BD5FC7D2FE43BCBCB082A1BB943DB') # MariaDB Package Signing Key <package-signing-key@mariadb.org>
 source=("http://ftp.osuosl.org/pub/mariadb/mariadb-${pkgver}/source/mariadb-${pkgver}.tar.gz"{,.asc}
         '0001-openssl-1-1-0.patch'
-        '0002-mroonga-after-merge-CMakeLists.txt-fixes.patch')
-sha256sums=('0e2aae6a6a190d07c8e36e87dd43377057fa82651ca3c583462563f3e9369096'
+        '0002-mroonga-after-merge-CMakeLists.txt-fixes.patch'
+        'atomic.patch')
+sha512sums=('1d30e06d0c19e338bfbbe6815cf5eee8e1b839b525950f7f54c7cf8f89034658a284df4756f54719ab0f55875546d4713b03bab7dd094ec13291732b069f737e'
             'SKIP'
-            '229d556748119757f36be1e9956834be28db0f5a35cdacce53f6c640784fca77'
-            '98736aefef21e575e450f8066685ba82771264409412e33491ab0a54e4407ba7')
+            '92b1a0bd47c8ab8fad5f51f9038ea9becba5ef2855bfa3fb0614b8a2d2666ec77122c3b4308bc90144fc2df023a4d7fa7e9bd520174f49bd99a8ae64bb5096f4'
+            '5768aeaf08b08288eb8813c0adf252ee5c91166f8f4855291cb7e91e2d7de73ae2ee8dfd4309d261e9e9367ed80a4c6d17b1ac70d307c5088164d647317a1aa9'
+            '02cfc50cced0fd1b9def228fdcbfe0f9dde54cbeb29a0df50592da45b212079abf1de761da229ee9630c664bd1884620a944eeb1b8010c68f64d7abcc331ded5')
 install=mariadb.install
 
 releasepage=('https://git.archlinux.org/svntogit/packages.git/tree/trunk?h=packages/mariadb')
-pkgverforked=('10.1.31-1')
-
+pkgverforked=('10.1.33-1')
 
 #    'etc/mysql/conf.d/50-replication.cnf'
 
@@ -44,6 +47,11 @@ prepare() {
 
   # let's create the datadir from tmpfiles
   echo 'd @MYSQL_DATADIR@ 0700 @MYSQLD_USER@ @MYSQLD_USER@ -' >> support-files/tmpfiles.conf.in
+
+  # from ArchLinuxARM
+  if [[ $CARCH == arm || $CARCH == armv6h ]]; then
+    patch -p0 -i ../atomic.patch
+  fi
 }
 
 build() {
@@ -92,6 +100,7 @@ build() {
     -DWITHOUT_FEDERATED_STORAGE_ENGINE=1 \
     -DWITHOUT_PBXT_STORAGE_ENGINE=1 \
     -DCMAKE_EXE_LINKER_FLAGS='-ljemalloc' \
+    -DWITHOUT_MROONGA_STORAGE_ENGINE=1 \
     -DCMAKE_C_FLAGS="-fPIC $CFLAGS -fno-strict-aliasing -DBIG_JOINS=1 -fomit-frame-pointer -fno-delete-null-pointer-checks" \
     -DCMAKE_CXX_FLAGS="-fPIC $CXXFLAGS -fno-strict-aliasing -DBIG_JOINS=1 -felide-constructors -fno-rtti -fno-delete-null-pointer-checks" \
     -DWITH_MYSQLD_LDFLAGS="-pie ${LDFLAGS},-z,now"
@@ -204,6 +213,8 @@ package_mariadb() {
   rm -r usr/{data,mysql-test,sql-bench}
   rm usr/share/man/man1/mysql-test-run.pl.1
 
+
+# UBOS added:
 
     mkdir -p -m755 ${pkgdir}/etc/mysql/conf.d
     install -D -m644 ${startdir}/etc/mysql/my.cnf -t ${pkgdir}/etc/mysql/
